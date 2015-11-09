@@ -10,7 +10,7 @@ func main() {
 //  UTILS
 // ══════════════════════════
 
-func debuglog(str string) {
+func printLine(str string) {
 	fmt.Println(str)
 }
 

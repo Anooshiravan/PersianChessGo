@@ -31,14 +31,12 @@ var debug = true
 var board_debug = false
 var move_sanity_check = false
 var vs_engine = false
-var engine = ""
 var engine_error_L1 = 0
 var engine_error_L2 = 0
 
 var variant = "Persian"
 
 const BRD_SQ_NUM = 195
-
 const MAXGAMEMOVES = 2048
 const MAXPOSITIONMOVES = 256
 const MAXDEPTH = 16
@@ -114,11 +112,6 @@ const (
 )
 
 const (
-	FALSE = iota
-	TRUE
-)
-
-const (
 	CASTLEBIT_WKCA = 1
 	CASTLEBIT_WQCA = 2
 	CASTLEBIT_BKCA = 4
@@ -131,12 +124,10 @@ var RanksBrd [BRD_SQ_NUM]int
 var Sq195ToSq121 [BRD_SQ_NUM]int
 var Sq121ToSq195 [121]int
 
-var PceChar = ".PNWCBRSFQKpnwcbrsfqk"
-var UnicodePceChar = ".♙♘WC♗♖❀✙♕♔♟♞wc♝♜✿✚♛♚"
-
-var SideChar = "wb-"
-var RankChar = "123456789"
-var FileChar = "abcdefghijk"
+var PceChar = []string{".", "P", "N", "W", "C", "B", "R", "S", "F", "Q", "K", "p", "n", "w", "c", "b", "r", "s", "f", "q", "k"}
+var SideChar = []string{"w", "b", "-"}
+var RankChar = []string{"1", "2", "3", "4", "5", "6", "7", "8", "9"}
+var FileChar = []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"}
 
 const (
 	PIECES_EMPTY = iota
@@ -332,30 +323,30 @@ func RAND_32() int {
 	return rand.Int()
 }
 
-func SQASE(sq int) int {
+func SQASE(sq int) bool {
 	if sq == 97 && variant == "ASE" {
-		return TRUE
+		return true
 	}
-	return FALSE
+	return false
 }
 
-func SQPERS(from int, to int) int {
+func SQPERS(from int, to int) bool {
 	if to == 97 &&
 		variant == "Persian" &&
 		brd_pieces[from] != wS &&
 		brd_pieces[from] != wP &&
 		brd_pieces[from] != bS &&
 		brd_pieces[from] != bP {
-		return TRUE
+		return true
 	}
-	return FALSE
+	return false
 }
 
-func SQOFFBOARD(sq int) int {
+func SQOFFBOARD(sq int) bool {
 	if FilesBrd[sq] == SQUARES_OFFBOARD {
-		return TRUE
+		return true
 	}
-	return FALSE
+	return false
 }
 
 func HASH_PCE(pce int, sq int) {
@@ -376,6 +367,8 @@ func HASH_EP() {
 
 var GameController_EngineSide = COLOURS_BOTH
 var GameController_PlayerSide = COLOURS_BOTH
-var GameController_BoardFlipped = FALSE
-var GameController_GameOver = FALSE
-var GameController_GameSaved = FALSE
+var GameController_BoardFlipped = false
+var GameController_GameOver = false
+var GameController_GameSaved = false
+
+var START_FEN = "f111111111f/1rnbqksbnr1/1ppppppppp1/11111111111/11111111111/11111111111/11111111111/11111111111/1PPPPPPPPP1/1RNBQKSBNR1/F111111111F w KQkq - 0 1"

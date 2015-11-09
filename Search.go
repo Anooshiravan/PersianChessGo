@@ -29,7 +29,7 @@ var srch_time = 0
 var srch_start = 0
 var srch_stop = 0
 var srch_best = 0
-var srch_thinking = FALSE
+var srch_thinking = false
 
 var engine_recovery = true
 

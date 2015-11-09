@@ -122,10 +122,8 @@ func init_engine() {
 	InitBoardVars()
 	InitMvvLva()
 	EvalInit()
-	srch_thinking = FALSE
+	srch_thinking = false
 }
-
-var START_FEN = "f111111111f/1rnbqksbnr1/1ppppppppp1/11111111111/11111111111/11111111111/11111111111/11111111111/1PPPPPPPPP1/1RNBQKSBNR1/F111111111F w KQkq - 0 1"
 
 func NewGame() {
 	init_engine()
@@ -134,7 +132,7 @@ func NewGame() {
 		PrintBoard()
 	}
 	GameController_PlayerSide = brd_side
-	GameController_GameSaved = FALSE
+	GameController_GameSaved = false
 	SendMessageToGui("init", "new_game_started")
 	// SendPosition();
 }

@@ -16,7 +16,10 @@
 */
 package main
 
-import "strconv"
+import (
+	"strconv"
+	"unicode/utf8"
+)
 
 // ══════════════════════════
 //  Engine system board
@@ -40,16 +43,15 @@ var brd_history_enPas []int
 var brd_history_fiftyMove []int
 var brd_history_posKey []int
 
-var brd_moveList []int
-var brd_moveScores []int
-var brd_moveListStart []int
+var brd_moveList [MAXDEPTH * MAXPOSITIONMOVES]int
+var brd_moveScores [MAXDEPTH * MAXPOSITIONMOVES]int
+var brd_moveListStart [MAXDEPTH]int
 
 var brd_PvTable_move []int
 var brd_PvTable_posKey []int
-
-var brd_PvArray []int
-var brd_searchHistory []int
-var brd_searchKillers []int
+var brd_PvArray [MAXDEPTH]int
+var brd_searchHistory [22 * BRD_SQ_NUM]int
+var brd_searchKillers [3 * MAXDEPTH]int
 
 /*
 
@@ -121,7 +123,7 @@ function CheckBoard() {
         for (t_pce_num = 0; t_pce_num < brd_pceNum[t_piece]; ++t_pce_num) {
             sq195 = brd_pList[PCEINDEX(t_piece, t_pce_num)];
             if (brd_pieces[sq195] != t_piece) {
-                debuglog('Error Pce Lists');
+                printLine('Error Pce Lists');
                 return BOOL.FALSE;
             }
         }
@@ -137,21 +139,21 @@ function CheckBoard() {
 
     for (t_piece = PIECES.wP; t_piece <= PIECES.bK; ++t_piece) {
         if (t_pceNum[t_piece] != brd_pceNum[t_piece]) {
-            debuglog('Error t_pceNum');
+            printLine('Error t_pceNum');
             return BOOL.FALSE;
         }
     }
 
     if (t_material[COLOURS.WHITE] != brd_material[COLOURS.WHITE] || t_material[COLOURS.BLACK] != brd_material[COLOURS.BLACK]) {
-        debuglog('Error t_material');
+        printLine('Error t_material');
         return BOOL.FALSE;
     }
     if (brd_side != COLOURS.WHITE && brd_side != COLOURS.BLACK) {
-        debuglog('Error brd_side');
+        printLine('Error brd_side');
         return BOOL.FALSE;
     }
     if (GeneratePosKey() != brd_posKey) {
-        debuglog('Error brd_posKey');
+        printLine('Error brd_posKey');
         return BOOL.FALSE;
     }
 
@@ -166,7 +168,7 @@ function printGameLine() {
     for (moveNum = 0; moveNum < brd_hisPly; ++moveNum) {
         gameLine += PrMove(brd_history[moveNum].move) + " ";
     }
-    //debuglog('Game Line: ' + gameLine);
+    //printLine('Game Line: ' + gameLine);
     return gameLine.trim();
 }
 
@@ -175,7 +177,7 @@ function PrintPceLists() {
 
     for (piece = PIECES.wP; piece <= PIECES.bK; ++piece) {
         for (pceNum = 0; pceNum < brd_pceNum[piece]; ++pceNum) {
-            debuglog("Piece " + PceChar[piece] + " on " + PrSq(brd_pList[PCEINDEX(piece, pceNum)]));
+            printLine("Piece " + PceChar[piece] + " on " + PrSq(brd_pList[PCEINDEX(piece, pceNum)]));
         }
     }
 
@@ -232,7 +234,7 @@ func PrintBoard() {
 	var sq, file, rank, piece int
 	var line string
 
-	debuglog("\nGame Board:\n")
+	printLine("\nGame Board:\n")
 
 	for rank = RANK_11; rank >= RANK_1; rank-- {
 		line = ""
@@ -248,21 +250,21 @@ func PrintBoard() {
 			if piece == SQUARES_OFFBOARD {
 				line += " * "
 			} else {
-				line += " " + PceChar[piece:piece+1] + " "
+				line += " " + PceChar[piece] + " "
 			}
 		}
-		debuglog(line)
+		printLine(line)
 	}
 
-	debuglog("")
+	printLine("")
 	line = "   "
 	for file = FILE_A; file <= FILE_K; file++ {
-		line += " " + FileChar[file:file+1] + " "
+		line += " " + FileChar[file] + " "
 	}
-	debuglog(line)
-	debuglog("")
-	debuglog("side:" + SideChar[brd_side:1])
-	debuglog("enPas:" + strconv.Itoa(brd_enPas))
+	printLine(line)
+	printLine("")
+	printLine("side:" + SideChar[brd_side])
+	printLine("enPas:" + strconv.Itoa(brd_enPas))
 	line = ""
 
 	if brd_castlePerm&CASTLEBIT_WKCA != 0 {
@@ -278,10 +280,8 @@ func PrintBoard() {
 		line += "q"
 	}
 
-	debuglog("castle:" + line)
-	debuglog("key:" + strconv.Itoa(brd_posKey))
-	// PrintPceLists();
-
+	printLine("castle:" + line)
+	printLine("key:" + strconv.Itoa(brd_posKey))
 }
 
 func ResetBoard() {
@@ -323,112 +323,113 @@ func ResetBoard() {
 
 }
 
-func ParseFen(fen string) {
+func ParseFen(fen string) bool {
+
+	var rank = RANK_11
+	var file = FILE_A
+	var piece = 0
+	var count = 0
+	var i = 0
+	var sq121 = 0
+	var sq195 = 0
+	var fenCnt = 0
+
+	ResetBoard()
+
+	for rank >= RANK_1 && fenCnt < utf8.RuneCountInString(fen) {
+		count = 1
+		switch fen[fenCnt] {
+		case 'p':
+			piece = bP
+			break
+		case 'r':
+			piece = bR
+			break
+		case 'n':
+			piece = bN
+			break
+		case 'w':
+			piece = bW
+			break
+		case 'c':
+			piece = bC
+			break
+		case 'b':
+			piece = bB
+			break
+		case 's':
+			piece = bS
+			break
+		case 'f':
+			piece = bF
+			break
+		case 'k':
+			piece = bK
+			break
+		case 'q':
+			piece = bQ
+			break
+		case 'P':
+			piece = wP
+			break
+		case 'R':
+			piece = wR
+			break
+		case 'N':
+			piece = wN
+			break
+		case 'W':
+			piece = wW
+			break
+		case 'C':
+			piece = wC
+			break
+		case 'B':
+			piece = wB
+			break
+		case 'S':
+			piece = wS
+			break
+		case 'F':
+			piece = wF
+			break
+		case 'K':
+			piece = wK
+			break
+		case 'Q':
+			piece = wQ
+			break
+		case '1':
+			piece = PIECES_EMPTY
+			break
+
+		case '/':
+		case ' ':
+			rank--
+			file = FILE_A
+			fenCnt++
+			continue
+
+		default:
+			printLine("FEN error \n")
+			return false
+		}
+
+		for i = 0; i < count; i++ {
+			sq121 = rank*11 + file
+			sq195 = SQ195(sq121)
+			if piece != PIECES_EMPTY {
+				if brd_pieces[sq195] != SQUARES_OFFBOARD {
+					brd_pieces[sq195] = piece
+				}
+
+			}
+			file++
+		}
+		fenCnt++
+	}
 
 	/*
-		    var rank = RANK_11
-			var file = FILE_A
-			var piece = 0
-			var count = 0
-			var i = 0
-			var sq121 = 0
-			var sq195 = 0
-			var fenCnt = 0
-	*/
-
-	// ResetBoard()
-
-	/*
-
-	   while ((rank >= RANKS.RANK_1) && fenCnt < fen.length) {
-	       count = 1;
-	       switch (fen[fenCnt]) {
-	           case 'p':
-	               piece = PIECES.bP;
-	               break;
-	           case 'r':
-	               piece = PIECES.bR;
-	               break;
-	           case 'n':
-	               piece = PIECES.bN;
-	               break;
-	           case 'w':
-	               piece = PIECES.bW;
-	               break;
-	           case 'c':
-	               piece = PIECES.bC;
-	               break;
-	           case 'b':
-	               piece = PIECES.bB;
-	               break;
-	           case 's':
-	               piece = PIECES.bS;
-	               break;
-	           case 'f':
-	               piece = PIECES.bF;
-	               break;
-	           case 'k':
-	               piece = PIECES.bK;
-	               break;
-	           case 'q':
-	               piece = PIECES.bQ;
-	               break;
-	           case 'P':
-	               piece = PIECES.wP;
-	               break;
-	           case 'R':
-	               piece = PIECES.wR;
-	               break;
-	           case 'N':
-	               piece = PIECES.wN;
-	               break;
-	           case 'W':
-	               piece = PIECES.wW;
-	               break;
-	           case 'C':
-	               piece = PIECES.wC;
-	               break;
-	           case 'B':
-	               piece = PIECES.wB;
-	               break;
-	           case 'S':
-	               piece = PIECES.wS;
-	               break;
-	           case 'F':
-	               piece = PIECES.wF;
-	               break;
-	           case 'K':
-	               piece = PIECES.wK;
-	               break;
-	           case 'Q':
-	               piece = PIECES.wQ;
-	               break;
-	           case '1':
-	               piece = PIECES.EMPTY;
-	               break;
-
-	           case '/':
-	           case ' ':
-	               rank--;
-	               file = FILES.FILE_A;
-	               fenCnt++;
-	               continue;
-
-	           default:
-	               debuglog("FEN error \n");
-	               return false;
-	       }
-
-	       for (i = 0; i < count; i++) {
-	           sq121 = rank * 11 + file;
-	           sq195 = SQ195(sq121);
-	           if (piece != PIECES.EMPTY) {
-	               if (brd_pieces[sq195] != SQUARES.OFFBOARD) brd_pieces[sq195] = piece;
-	           }
-	           file++;
-	       }
-	       fenCnt++;
-	   }
 
 	   brd_side = (fen[fenCnt] == 'w') ? COLOURS.WHITE : COLOURS.BLACK;
 	   fenCnt += 2;
@@ -461,15 +462,15 @@ func ParseFen(fen string) {
 	   if (fen[fenCnt] != '-' && fen[fenCnt] != undefined) {
 	       file = fen[fenCnt].charCodeAt() - 'a'.charCodeAt();
 	       rank = fen[fenCnt + 1].charCodeAt() - '1'.charCodeAt();
-	       debuglog("fen[fenCnt]:" + fen[fenCnt] + " File:" + file + " Rank:" + rank);
+	       printLine("fen[fenCnt]:" + fen[fenCnt] + " File:" + file + " Rank:" + rank);
 	       brd_enPas = FR2SQ(file, rank);
 	   }
 
 	   brd_posKey = GeneratePosKey();
 	   UpdateListsMaterial();
-	   return true;
-
 	*/
+	return true
+
 }
 
 /*
@@ -572,7 +573,7 @@ function PrintSqAttacked() {
 
     var sq, file, rank, piece, line;
 
-    debuglog("\nAttacked by Black:\n");
+    printLine("\nAttacked by Black:\n");
 
     for (rank = RANKS.RANK_11; rank >= RANKS.RANK_1; rank--) {
         line = ((rank + 1) + "  ");
@@ -583,10 +584,10 @@ function PrintSqAttacked() {
             else piece = "-";
             line += (" " + piece + " ");
         }
-        debuglog(line);
+        printLine(line);
     }
 
-    debuglog("\nAttacked by White:\n");
+    printLine("\nAttacked by White:\n");
 
     for (rank = RANKS.RANK_11; rank >= RANKS.RANK_1; rank--) {
         line = ((rank + 1) + "  ");
@@ -597,7 +598,7 @@ function PrintSqAttacked() {
             else piece = "-";
             line += (" " + piece + " ");
         }
-        debuglog(line);
+        printLine(line);
     }
 }
 
